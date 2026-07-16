@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 const Icon = ({ name }: { name: string }) => {
@@ -18,21 +18,45 @@ const Icon = ({ name }: { name: string }) => {
   return <svg viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
 };
 
-const courses = [
+const fallbackCourses = [
   { tag: "البداية الصح", title: "أساسيات البرمجة", desc: "ابدأ من الصفر وابني طريقة تفكير المبرمج خطوة بخطوة.", lessons: "24 درس", level: "مبتدئ", icon: "</>" },
   { tag: "الذكاء الاصطناعي", title: "AI للثانوية", desc: "افهم مفاهيم الذكاء الاصطناعي وطبّقها على مشروعات حقيقية.", lessons: "18 درس", level: "متوسط", icon: "AI" },
   { tag: "تطبيق عملي", title: "حل المشكلات", desc: "تدريبات متدرجة وأسئلة تساعدك تتعامل مع أي مسألة بثقة.", lessons: "30 تدريب", level: "كل المستويات", icon: "{ }" },
 ];
 
-const faqs = [
+const fallbackFaqs = [
   ["هل الكورس مناسب لو أنا لسه مبتدئ؟", "أيوه، المنهج بيبدأ معاك من الصفر وبيشرح المفاهيم ببساطة قبل أي تطبيق عملي."],
   ["المحاضرات بتكون لايف ولا مسجلة؟", "فيه محاضرات مباشرة للتفاعل وحل الأسئلة، وكل محاضرة بتكون متاحة مسجلة للمراجعة في أي وقت."],
   ["هل فيه متابعة للواجبات؟", "كل وحدة فيها تدريبات وواجب عملي، مع متابعة دورية وتصحيح يوضحلك نقاط القوة والتحسين."],
 ];
 
+type ContentResponse = {
+  courses?: { tag: string; title: string; description: string; lessonsLabel: string; level: string; icon: string }[];
+  faqs?: { question: string; answer: string }[];
+  testimonials?: { studentName: string; studentLevel: string; quote: string }[];
+};
+
 export default function Home() {
   const [menu, setMenu] = useState(false);
   const [faq, setFaq] = useState(0);
+  const [courses, setCourses] = useState(fallbackCourses);
+  const [faqs, setFaqs] = useState(fallbackFaqs);
+  const [testimonials, setTestimonials] = useState([
+    { studentName: "محمد أحمد", studentLevel: "تانية ثانوي", quote: "كنت فاكر البرمجة صعبة جدًا، بس طريقة الشرح خلتني أفهم الفكرة وأحل بإيدي من أول أسبوع." },
+    { studentName: "سارة خالد", studentLevel: "أولى ثانوي", quote: "أكتر حاجة فرقت معايا المتابعة. كل سؤال كان بيترد عليه وبدأت أثق في حلي أكتر." },
+    { studentName: "عمر مصطفى", studentLevel: "ثالثة ثانوي", quote: "المحتوى منظم ومش بيجري. حسيت إني بتعلم بنفس نظام الجامعة بس بطريقة أبسط." },
+  ]);
+
+  useEffect(() => {
+    fetch("/api/content")
+      .then((response) => response.ok ? response.json() as Promise<ContentResponse> : Promise.reject())
+      .then((data) => {
+        if (data.courses?.length) setCourses(data.courses.map((course) => ({ tag: course.tag, title: course.title, desc: course.description, lessons: course.lessonsLabel, level: course.level, icon: course.icon })));
+        if (data.faqs?.length) setFaqs(data.faqs.map((item: Record<string, string>) => [item.question, item.answer]));
+        if (data.testimonials?.length) setTestimonials(data.testimonials);
+      })
+      .catch(() => undefined);
+  }, []);
   const go = (id: string) => { document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }); setMenu(false); };
 
   return (
@@ -73,7 +97,7 @@ export default function Home() {
 
       <section className="section method" id="method"><div className="container method-grid"><div className="method-copy"><span className="kicker">نظام المنصور</span><h2>من أول شرح لحد ما<br/><em>تكتب الكود بنفسك</em></h2><p>مش بنحفظك إجابات. بنبني معاك الأساس، وبعدها نخليك تجرب وتغلط وتفهم لحد ما توصل للحل بنفسك.</p><div className="steps">{[["01","افهم الفكرة","شرح مبسط بأمثلة من الواقع"],["02","شوف التطبيق","حل مباشر خطوة بخطوة"],["03","جرّب بنفسك","واجبات وتدريبات متدرجة"],["04","تابع تقدمك","Feedback مستمر على شغلك"]].map(x=><div className="step" key={x[0]}><b>{x[0]}</b><div><h3>{x[1]}</h3><p>{x[2]}</p></div></div>)}</div></div><div className="method-panel"><div className="lesson-head"><span>درس اليوم</span><b>أساسيات الـ Python</b></div><div className="video-box"><button aria-label="تشغيل الدرس"><Icon name="play"/></button><span>08:42</span></div><div className="progress-label"><b>تقدمك في المسار</b><span>68%</span></div><div className="progress"><i/></div><div className="next"><span><Icon name="check"/></span><div><b>خلصت أول 16 درس!</b><small>كمّل، فاضلك 8 دروس على الشهادة</small></div></div></div></div></section>
 
-      <section className="section reviews" id="reviews"><div className="container"><div className="section-head centered"><div><span className="kicker">ناس بدأت قبلك</span><h2>طلابنا بيقولوا إيه؟</h2></div></div><div className="review-grid">{[["محمد أحمد","تانية ثانوي","كنت فاكر البرمجة صعبة جدًا، بس طريقة الشرح خلتني أفهم الفكرة وأحل بإيدي من أول أسبوع."],["سارة خالد","أولى ثانوي","أكتر حاجة فرقت معايا المتابعة. كل سؤال كان بيترد عليه وبدأت أثق في حلي أكتر."],["عمر مصطفى","ثالثة ثانوي","المحتوى منظم ومش بيجري. حسيت إني بتعلم بنفس نظام الجامعة بس بطريقة أبسط."]].map((r,i)=><article className="review-card" key={r[0]}><div className="stars">★★★★★</div><p>“{r[2]}”</p><div className="student"><span>{r[0][0]}</span><div><b>{r[0]}</b><small>{r[1]}</small></div><em>0{i+1}</em></div></article>)}</div></div></section>
+      <section className="section reviews" id="reviews"><div className="container"><div className="section-head centered"><div><span className="kicker">ناس بدأت قبلك</span><h2>طلابنا بيقولوا إيه؟</h2></div></div><div className="review-grid">{testimonials.map((r,i)=><article className="review-card" key={`${r.studentName}-${i}`}><div className="stars">★★★★★</div><p>“{r.quote}”</p><div className="student"><span>{r.studentName[0]}</span><div><b>{r.studentName}</b><small>{r.studentLevel}</small></div><em>0{i+1}</em></div></article>)}</div></div></section>
 
       <section className="section faq" id="faq"><div className="container faq-grid"><div><span className="kicker">قبل ما تبدأ</span><h2>أسئلة بتتكرر<br/><em>وإجاباتها</em></h2><p>لو عندك سؤال تاني، كلمنا وإحنا هنرد عليك ونساعدك تختار البداية المناسبة.</p></div><div className="accordion">{faqs.map((x,i)=><div className={`faq-item ${faq===i?"active":""}`} key={x[0]}><button onClick={()=>setFaq(faq===i?-1:i)} aria-expanded={faq===i}><b>{x[0]}</b><span>{faq===i?"−":"+"}</span></button>{faq===i&&<p>{x[1]}</p>}</div>)}</div></div></section>
 
