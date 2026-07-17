@@ -64,7 +64,7 @@ export default function Home() {
       <header className="nav-wrap">
         <nav className="nav container" aria-label="التنقل الرئيسي">
           <button className="brand" onClick={() => go("home")} aria-label="الرئيسية">
-            <span className="brand-mark">م</span><span><b>المنصور</b><small>أكاديمية البرمجة</small></span>
+            <img className="brand-logo" src="/almansour-logo.png" alt="المنصور أكاديمية البرمجة" />
           </button>
           <div className={`nav-links ${menu ? "open" : ""}`}>
             <button onClick={() => go("home")}>الرئيسية</button><button onClick={() => go("courses")}>الكورسات</button><button onClick={() => go("method")}>نظام الدراسة</button><button onClick={() => go("reviews")}>آراء الطلاب</button><button onClick={() => go("faq")}>الأسئلة الشائعة</button><div className="mobile-auth"><Link href="/signin">تسجيل الدخول</Link><Link href="/signup">إنشاء حساب</Link></div>
