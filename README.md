@@ -36,3 +36,5 @@ npm run dev
 ## النشر على Hostinger
 
 اربط مستودع GitHub كتطبيق Node.js/Next.js، وأضف متغيرات البيئة الموجودة في `.env.example`. استخدم أمر البناء `npm run build` وأمر التشغيل `npm start`، وطبّق `npm run db:migrate` قبل تشغيل أول نسخة.
+
+على Hostinger VPS مع CloudPanel: أنشئ Node.js Site بإصدار Node 22 ومنفذ داخلي مثل 3000، ثم شغّل `bash scripts/deploy-hostinger.sh` من مجلد المشروع. ملف `ecosystem.config.cjs` يحافظ على تشغيل التطبيق عبر PM2.
