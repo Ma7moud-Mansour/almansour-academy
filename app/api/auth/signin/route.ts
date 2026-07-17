@@ -16,7 +16,8 @@ export async function POST(request: Request) {
 
     const token = randomToken();
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    await db.insert(studentSessions).values({ studentId: student.id, tokenHash: await hashToken(token), expiresAt: expiresAt.toISOString() });
+    await db.insert(studentSessions).values({ studentId: student.id, tokenHash: await hashToken(token), expiresAt, ipAddress: request.headers.get("x-forwarded-for"), userAgent: request.headers.get("user-agent") });
+    await db.update(students).set({ lastLoginAt: new Date(), updatedAt: new Date() }).where(eq(students.id, student.id));
     const secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
     return new Response(JSON.stringify({ message: "تم تسجيل الدخول بنجاح", student: { id: student.id, fullName: student.fullName } }), {
       status: 200,

@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   if (body.resource === "courses") {
     if (!text(body.title) || !text(body.description)) return invalid();
     const [row] = await db.insert(courses).values({
-      tag: text(body.tag), title: text(body.title), description: text(body.description),
+      tag: text(body.tag), title: text(body.title), slug: slug(text(body.title)), description: text(body.description),
       lessonsLabel: text(body.lessonsLabel), level: text(body.level), icon: text(body.icon) || "</>",
       sortOrder: number(body.sortOrder), published: boolean(body.published),
     }).returning();
@@ -59,7 +59,7 @@ export async function PUT(request: Request) {
   const id = number(body.id);
   if (!id) return invalid();
   const db = getDb();
-  const updatedAt = new Date().toISOString();
+  const updatedAt = new Date();
 
   if (body.resource === "courses") {
     await db.update(courses).set({ tag: text(body.tag), title: text(body.title), description: text(body.description), lessonsLabel: text(body.lessonsLabel), level: text(body.level), icon: text(body.icon) || "</>", sortOrder: number(body.sortOrder), published: boolean(body.published), updatedAt }).where(eq(courses.id, id));
@@ -87,4 +87,9 @@ export async function DELETE(request: Request) {
 
 function invalid() {
   return Response.json({ error: "البيانات المطلوبة غير مكتملة" }, { status: 400 });
+}
+
+function slug(value: string) {
+  const base = value.toLowerCase().trim().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "");
+  return `${base || "course"}-${Date.now().toString(36)}`;
 }

@@ -31,7 +31,7 @@ export async function PUT(request: Request) {
   await getDb().update(students).set({
     fullName: clean(body.fullName), phone: phone(body.phone), academicYear: academicYear as "first" | "second",
     governorate: clean(body.governorate), guardianOccupation: clean(body.guardianOccupation),
-    guardianPhone: phone(body.guardianPhone), active: body.active === true, updatedAt: new Date().toISOString(),
+    guardianPhone: phone(body.guardianPhone), active: body.active === true, updatedAt: new Date(),
   }).where(eq(students.id, id));
   return Response.json({ ok: true });
 }
