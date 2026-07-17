@@ -11,16 +11,17 @@ export default function AuthForm({ mode }: { mode: "signin" | "signup" }) {
   const [loading, setLoading] = useState(false);
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const form = e.currentTarget;
     setMessage(""); setError(""); setLoading(true);
     try {
-      const values = Object.fromEntries(new FormData(e.currentTarget));
+      const values = Object.fromEntries(new FormData(form));
       const response = await fetch(signup ? "/api/auth/signup" : "/api/auth/signin", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values),
       });
       const data = await response.json() as { message?: string; error?: string };
       if (!response.ok) throw new Error(data.error || "تعذر تنفيذ الطلب");
       setMessage(`${data.message} ✓`);
-      if (signup) e.currentTarget.reset();
+      if (signup) form.reset();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "حدث خطأ غير متوقع");
     } finally {
