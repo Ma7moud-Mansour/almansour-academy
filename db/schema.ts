@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 const timestamps = {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -37,3 +37,32 @@ export const testimonials = sqliteTable("testimonials", {
   published: integer("published", { mode: "boolean" }).notNull().default(true),
   ...timestamps,
 });
+
+export const students = sqliteTable("students", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  fullName: text("full_name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone").notNull(),
+  academicYear: text("academic_year", { enum: ["first", "second"] }).notNull(),
+  governorate: text("governorate").notNull(),
+  guardianOccupation: text("guardian_occupation").notNull(),
+  guardianPhone: text("guardian_phone").notNull(),
+  passwordHash: text("password_hash").notNull(),
+  passwordSalt: text("password_salt").notNull(),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  ...timestamps,
+}, (table) => [
+  uniqueIndex("students_email_unique").on(table.email),
+  uniqueIndex("students_phone_unique").on(table.phone),
+]);
+
+export const studentSessions = sqliteTable("student_sessions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  studentId: integer("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("student_sessions_token_unique").on(table.tokenHash),
+  index("student_sessions_student_idx").on(table.studentId),
+]);

@@ -7,9 +7,25 @@ export default function AuthForm({ mode }: { mode: "signin" | "signup" }) {
   const signup = mode === "signup";
   const [show, setShow] = useState(false);
   const [message, setMessage] = useState("");
-  const submit = (e: FormEvent<HTMLFormElement>) => {
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setMessage(signup ? "تم إنشاء الحساب التجريبي بنجاح ✓" : "تم تسجيل الدخول التجريبي بنجاح ✓");
+    setMessage(""); setError(""); setLoading(true);
+    try {
+      const values = Object.fromEntries(new FormData(e.currentTarget));
+      const response = await fetch(signup ? "/api/auth/signup" : "/api/auth/signin", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values),
+      });
+      const data = await response.json() as { message?: string; error?: string };
+      if (!response.ok) throw new Error(data.error || "تعذر تنفيذ الطلب");
+      setMessage(`${data.message} ✓`);
+      if (signup) e.currentTarget.reset();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "حدث خطأ غير متوقع");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -25,14 +41,19 @@ export default function AuthForm({ mode }: { mode: "signin" | "signup" }) {
         <div className="auth-form-wrap">
           <Link href="/" className="back-home">← الرجوع للرئيسية</Link>
           <div className="auth-heading"><span>{signup ? "حساب جديد" : "تسجيل الدخول"}</span><h2>{signup ? "يلا نبدأ!" : "نورت المنصة"}</h2><p>{signup ? "اكتب بياناتك عشان تنضم لطلاب المنصور." : "اكتب بياناتك عشان تدخل على حسابك."}</p></div>
-          <form onSubmit={submit}>
-            {signup && <label>الاسم بالكامل<input required minLength={3} type="text" placeholder="اكتب اسمك" autoComplete="name" /></label>}
-            <label>البريد الإلكتروني<input required type="email" placeholder="name@example.com" autoComplete="email" /></label>
-            {signup && <label>رقم الموبايل<input required pattern="[0-9]{11}" type="tel" placeholder="01xxxxxxxxx" autoComplete="tel" /></label>}
-            <label>كلمة المرور<div className="password-field"><input required minLength={6} type={show ? "text" : "password"} placeholder="6 حروف على الأقل" autoComplete={signup ? "new-password" : "current-password"}/><button type="button" onClick={() => setShow(!show)}>{show ? "إخفاء" : "إظهار"}</button></div></label>
+          <form className={signup ? "signup-form" : ""} onSubmit={submit}>
+            {signup && <label className="full-field">الاسم بالكامل<input name="fullName" required minLength={5} type="text" placeholder="الاسم الأول واسم العائلة" autoComplete="name" /></label>}
+            <label>البريد الإلكتروني<input name="email" required type="email" placeholder="name@example.com" autoComplete="email" /></label>
+            {signup && <label>رقم موبايل الطالب<input name="phone" required pattern="01[0125][0-9]{8}" inputMode="numeric" type="tel" placeholder="01xxxxxxxxx" autoComplete="tel" /></label>}
+            {signup && <label>السنة الدراسية<select name="academicYear" required defaultValue=""><option value="" disabled>اختر السنة</option><option value="first">أولى ثانوي</option><option value="second">تانية ثانوي</option></select></label>}
+            {signup && <label>المحافظة<select name="governorate" required defaultValue=""><option value="" disabled>اختر المحافظة</option>{governorates.map((governorate) => <option key={governorate}>{governorate}</option>)}</select></label>}
+            {signup && <label>مهنة ولي الأمر<input name="guardianOccupation" required minLength={2} type="text" placeholder="مثال: مهندس" /></label>}
+            {signup && <label>رقم موبايل ولي الأمر<input name="guardianPhone" required pattern="01[0125][0-9]{8}" inputMode="numeric" type="tel" placeholder="01xxxxxxxxx" /></label>}
+            <label className={signup ? "full-field" : ""}>كلمة المرور<div className="password-field"><input name="password" required minLength={8} type={show ? "text" : "password"} placeholder="8 حروف على الأقل" autoComplete={signup ? "new-password" : "current-password"}/><button type="button" onClick={() => setShow(!show)}>{show ? "إخفاء" : "إظهار"}</button></div></label>
             {!signup && <div className="form-options"><label><input type="checkbox"/> تذكرني</label><button type="button">نسيت كلمة المرور؟</button></div>}
-            <button className="auth-submit" type="submit">{signup ? "إنشاء حساب" : "تسجيل الدخول"}<span>←</span></button>
+            <button className="auth-submit full-field" type="submit" disabled={loading}>{loading ? "جاري الحفظ..." : signup ? "إنشاء حساب" : "تسجيل الدخول"}<span>←</span></button>
             {message && <p className="success-message" role="status">{message}</p>}
+            {error && <p className="error-message" role="alert">{error}</p>}
           </form>
           <div className="auth-switch">{signup ? "عندك حساب بالفعل؟" : "لسه معندكش حساب؟"} <Link href={signup ? "/signin" : "/signup"}>{signup ? "سجّل دخول" : "اعمل حساب جديد"}</Link></div>
           <p className="terms">بالمتابعة أنت موافق على شروط الاستخدام وسياسة الخصوصية.</p>
@@ -41,3 +62,10 @@ export default function AuthForm({ mode }: { mode: "signin" | "signup" }) {
     </main>
   );
 }
+
+const governorates = [
+  "القاهرة", "الجيزة", "الإسكندرية", "الدقهلية", "البحر الأحمر", "البحيرة", "الفيوم", "الغربية",
+  "الإسماعيلية", "المنوفية", "المنيا", "القليوبية", "الوادي الجديد", "السويس", "أسوان", "أسيوط",
+  "بني سويف", "بورسعيد", "دمياط", "الشرقية", "جنوب سيناء", "كفر الشيخ", "مطروح", "الأقصر",
+  "قنا", "شمال سيناء", "سوهاج",
+];
