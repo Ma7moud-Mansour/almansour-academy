@@ -4,6 +4,14 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 git pull --ff-only origin main
 npm ci
+
+if [[ -f .env.production ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source .env.production
+  set +a
+fi
+
 npm run db:migrate
 npm run build
 
