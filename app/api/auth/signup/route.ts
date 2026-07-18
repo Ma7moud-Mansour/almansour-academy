@@ -1,7 +1,8 @@
 import { eq, or } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { students } from "../../../../db/schema";
+import { pendingStudentRegistrations, students } from "../../../../db/schema";
 import { hashPassword } from "../../../student-auth";
+import { createVerificationCode, hashVerificationCode, sendVerificationEmail, verificationExpiry } from "../../../verification-email";
 
 const years = new Set(["first", "second"]);
 const governorates = new Set([
@@ -36,13 +37,26 @@ export async function POST(request: Request) {
       .from(students).where(or(eq(students.email, email), eq(students.phone, phone))).limit(1);
     if (duplicate.length) return error(duplicate[0].email === email ? "البريد الإلكتروني مسجل بالفعل" : "رقم الموبايل مسجل بالفعل", 409);
 
+    const [existingPending] = await db.select({ lastSentAt: pendingStudentRegistrations.lastSentAt })
+      .from(pendingStudentRegistrations).where(or(eq(pendingStudentRegistrations.email, email), eq(pendingStudentRegistrations.phone, phone))).limit(1);
+    if (existingPending) {
+      const waitSeconds = Math.ceil((existingPending.lastSentAt.getTime() + 60_000 - Date.now()) / 1000);
+      if (waitSeconds > 0) return error(`استنى ${waitSeconds} ثانية قبل طلب كود جديد`, 429);
+    }
+
     const passwordData = await hashPassword(password);
-    const [student] = await db.insert(students).values({
+    const code = createVerificationCode();
+    const codeHash = await hashVerificationCode(email, code);
+    await db.delete(pendingStudentRegistrations).where(or(eq(pendingStudentRegistrations.email, email), eq(pendingStudentRegistrations.phone, phone)));
+    await db.insert(pendingStudentRegistrations).values({
       fullName, email, phone, academicYear: academicYear as "first" | "second", governorate,
       guardianOccupation, guardianPhone, passwordHash: passwordData.hash, passwordSalt: passwordData.salt,
-    }).returning({ id: students.id, fullName: students.fullName, email: students.email });
+      verificationCodeHash: codeHash, verificationExpiresAt: verificationExpiry(), lastSentAt: new Date(),
+    });
 
-    return Response.json({ student, message: "تم إنشاء حسابك بنجاح" }, { status: 201 });
+    await sendVerificationEmail(email, fullName, code);
+
+    return Response.json({ email, verificationRequired: true, message: "بعتنالك كود تأكيد من 6 أرقام على بريدك الإلكتروني" }, { status: 202 });
   } catch (cause) {
     console.error("Student signup failed", cause);
     return error("تعذر إنشاء الحساب الآن، حاول مرة أخرى", 500);

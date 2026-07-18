@@ -55,6 +55,28 @@ export const students = pgTable("students", {
   index("students_year_idx").on(table.academicYear),
 ]);
 
+export const pendingStudentRegistrations = pgTable("pending_student_registrations", {
+  id: serial("id").primaryKey(),
+  fullName: varchar("full_name", { length: 160 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 24 }).notNull(),
+  academicYear: academicYearEnum("academic_year").notNull(),
+  governorate: varchar("governorate", { length: 80 }).notNull(),
+  guardianOccupation: varchar("guardian_occupation", { length: 120 }).notNull(),
+  guardianPhone: varchar("guardian_phone", { length: 24 }).notNull(),
+  passwordHash: text("password_hash").notNull(),
+  passwordSalt: text("password_salt").notNull(),
+  verificationCodeHash: text("verification_code_hash").notNull(),
+  verificationExpiresAt: timestamp("verification_expires_at", { withTimezone: true }).notNull(),
+  verificationAttempts: integer("verification_attempts").notNull().default(0),
+  lastSentAt: timestamp("last_sent_at", { withTimezone: true }).notNull().defaultNow(),
+  ...timestamps,
+}, (table) => [
+  uniqueIndex("pending_students_email_unique").on(table.email),
+  uniqueIndex("pending_students_phone_unique").on(table.phone),
+  index("pending_students_expiry_idx").on(table.verificationExpiresAt),
+]);
+
 export const studentSessions = pgTable("student_sessions", {
   id: serial("id").primaryKey(),
   studentId: integer("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),

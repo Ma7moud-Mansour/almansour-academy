@@ -13,6 +13,9 @@ export async function POST(request: Request) {
     if (!student || !student.active || !(await verifyPassword(password, student.passwordSalt, student.passwordHash))) {
       return Response.json({ error: "البريد الإلكتروني أو كلمة المرور غير صحيحة" }, { status: 401 });
     }
+    if (!student.emailVerifiedAt) {
+      return Response.json({ error: "لازم تأكد بريدك الإلكتروني قبل تسجيل الدخول" }, { status: 403 });
+    }
 
     const token = randomToken();
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);

@@ -8,6 +8,13 @@
       "when": 1784302242933,
       "tag": "0000_wakeful_gauntlet",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784399123135,
+      "tag": "0001_aromatic_princess_powerful",
+      "breakpoints": true
     }
   ]
 }
