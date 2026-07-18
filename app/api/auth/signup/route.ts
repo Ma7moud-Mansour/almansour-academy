@@ -37,10 +37,13 @@ export async function POST(request: Request) {
       .from(students).where(or(eq(students.email, email), eq(students.phone, phone))).limit(1);
     if (duplicate.length) return error(duplicate[0].email === email ? "البريد الإلكتروني مسجل بالفعل" : "رقم الموبايل مسجل بالفعل", 409);
 
-    const [existingPending] = await db.select({ lastSentAt: pendingStudentRegistrations.lastSentAt })
+    const [existingPending] = await db.select({ email: pendingStudentRegistrations.email, lastSentAt: pendingStudentRegistrations.lastSentAt })
       .from(pendingStudentRegistrations).where(or(eq(pendingStudentRegistrations.email, email), eq(pendingStudentRegistrations.phone, phone))).limit(1);
     if (existingPending) {
       const waitSeconds = Math.ceil((existingPending.lastSentAt.getTime() + 60_000 - Date.now()) / 1000);
+      if (waitSeconds > 0 && existingPending.email === email) {
+        return Response.json({ email, verificationRequired: true, message: "الكود اتبعت بالفعل، اكتبه لتأكيد حسابك" }, { status: 202 });
+      }
       if (waitSeconds > 0) return error(`استنى ${waitSeconds} ثانية قبل طلب كود جديد`, 429);
     }
 
@@ -48,13 +51,18 @@ export async function POST(request: Request) {
     const code = createVerificationCode();
     const codeHash = await hashVerificationCode(email, code);
     await db.delete(pendingStudentRegistrations).where(or(eq(pendingStudentRegistrations.email, email), eq(pendingStudentRegistrations.phone, phone)));
-    await db.insert(pendingStudentRegistrations).values({
+    const [pending] = await db.insert(pendingStudentRegistrations).values({
       fullName, email, phone, academicYear: academicYear as "first" | "second", governorate,
       guardianOccupation, guardianPhone, passwordHash: passwordData.hash, passwordSalt: passwordData.salt,
       verificationCodeHash: codeHash, verificationExpiresAt: verificationExpiry(), lastSentAt: new Date(),
-    });
+    }).returning({ id: pendingStudentRegistrations.id });
 
-    await sendVerificationEmail(email, fullName, code);
+    try {
+      await sendVerificationEmail(email, fullName, code);
+    } catch (cause) {
+      await db.delete(pendingStudentRegistrations).where(eq(pendingStudentRegistrations.id, pending.id));
+      throw cause;
+    }
 
     return Response.json({ email, verificationRequired: true, message: "بعتنالك كود تأكيد من 6 أرقام على بريدك الإلكتروني" }, { status: 202 });
   } catch (cause) {

@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 export default function AuthForm({ mode }: { mode: "signin" | "signup" }) {
   const signup = mode === "signup";
+  const router = useRouter();
   const [show, setShow] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -23,6 +25,10 @@ export default function AuthForm({ mode }: { mode: "signin" | "signup" }) {
       if (!response.ok) throw new Error(data.error || "تعذر تنفيذ الطلب");
       setMessage(`${data.message} ✓`);
       if (signup && data.verificationRequired && data.email) setVerificationEmail(data.email);
+      if (!signup) {
+        router.replace("/");
+        router.refresh();
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "حدث خطأ غير متوقع");
     } finally {
@@ -37,8 +43,7 @@ export default function AuthForm({ mode }: { mode: "signin" | "signup" }) {
       const response = await fetch("/api/auth/verify-email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: verificationEmail, code }) });
       const data = await response.json() as { message?: string; error?: string };
       if (!response.ok) throw new Error(data.error || "تعذر تأكيد البريد");
-      setMessage(`${data.message} ✓ تقدر تسجّل دخولك دلوقتي.`);
-      setVerificationEmail("");
+      router.replace("/signin?verified=1");
     } catch (cause) { setError(cause instanceof Error ? cause.message : "حدث خطأ غير متوقع"); }
     finally { setLoading(false); }
   };

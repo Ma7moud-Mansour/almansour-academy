@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { studentSessions, students } from "../../../../db/schema";
 import { hashToken, randomToken, verifyPassword } from "../../../student-auth";
+import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {
@@ -21,11 +22,12 @@ export async function POST(request: Request) {
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     await db.insert(studentSessions).values({ studentId: student.id, tokenHash: await hashToken(token), expiresAt, ipAddress: request.headers.get("x-forwarded-for"), userAgent: request.headers.get("user-agent") });
     await db.update(students).set({ lastLoginAt: new Date(), updatedAt: new Date() }).where(eq(students.id, student.id));
-    const secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
-    return new Response(JSON.stringify({ message: "تم تسجيل الدخول بنجاح", student: { id: student.id, fullName: student.fullName } }), {
-      status: 200,
-      headers: { "Content-Type": "application/json", "Set-Cookie": `student_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${secure}` },
+    const response = NextResponse.json({ message: "تم تسجيل الدخول بنجاح", student: { id: student.id, fullName: student.fullName } });
+    response.cookies.set("student_session", token, {
+      httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production",
+      path: "/", maxAge: 30 * 24 * 60 * 60,
     });
+    return response;
   } catch (cause) {
     console.error("Student signin failed", cause);
     return Response.json({ error: "تعذر تسجيل الدخول الآن" }, { status: 500 });

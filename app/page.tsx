@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 const Icon = ({ name }: { name: string }) => {
   const paths: Record<string, React.ReactNode> = {
@@ -36,6 +37,8 @@ type ContentResponse = {
   testimonials?: { studentName: string; studentLevel: string; quote: string }[];
 };
 
+type CurrentStudent = { id: number; fullName: string; email: string };
+
 export default function Home() {
   const [menu, setMenu] = useState(false);
   const [faq, setFaq] = useState(0);
@@ -46,6 +49,7 @@ export default function Home() {
     { studentName: "سارة خالد", studentLevel: "أولى ثانوي", quote: "أكتر حاجة فرقت معايا المتابعة. كل سؤال كان بيترد عليه وبدأت أثق في حلي أكتر." },
     { studentName: "عمر مصطفى", studentLevel: "ثالثة ثانوي", quote: "المحتوى منظم ومش بيجري. حسيت إني بتعلم بنفس نظام الجامعة بس بطريقة أبسط." },
   ]);
+  const [student, setStudent] = useState<CurrentStudent | null>(null);
 
   useEffect(() => {
     fetch("/api/content")
@@ -57,6 +61,12 @@ export default function Home() {
       })
       .catch(() => undefined);
   }, []);
+  useEffect(() => {
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() as Promise<{ student: CurrentStudent | null }> : Promise.reject())
+      .then((data) => setStudent(data.student))
+      .catch(() => setStudent(null));
+  }, []);
   const go = (id: string) => { document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }); setMenu(false); };
 
   return (
@@ -64,12 +74,12 @@ export default function Home() {
       <header className="nav-wrap">
         <nav className="nav container" aria-label="التنقل الرئيسي">
           <button className="brand" onClick={() => go("home")} aria-label="الرئيسية">
-            <img className="brand-logo" src="/almansour-logo.png" alt="المنصور أكاديمية البرمجة" />
+            <Image className="brand-logo" src="/almansour-logo.png" alt="المنصور أكاديمية البرمجة" width={190} height={66} priority />
           </button>
           <div className={`nav-links ${menu ? "open" : ""}`}>
-            <button onClick={() => go("home")}>الرئيسية</button><button onClick={() => go("courses")}>الكورسات</button><button onClick={() => go("method")}>نظام الدراسة</button><button onClick={() => go("reviews")}>آراء الطلاب</button><button onClick={() => go("faq")}>الأسئلة الشائعة</button><div className="mobile-auth"><Link href="/signin">تسجيل الدخول</Link><Link href="/signup">إنشاء حساب</Link></div>
+            <button onClick={() => go("home")}>الرئيسية</button><button onClick={() => go("courses")}>الكورسات</button><button onClick={() => go("method")}>نظام الدراسة</button><button onClick={() => go("reviews")}>آراء الطلاب</button><button onClick={() => go("faq")}>الأسئلة الشائعة</button><div className="mobile-auth">{student ? <><span>أهلاً، {firstName(student.fullName)}</span><form action="/api/auth/signout" method="post"><button type="submit">تسجيل الخروج</button></form></> : <><Link href="/signin">تسجيل الدخول</Link><Link href="/signup">إنشاء حساب</Link></>}</div>
           </div>
-          <div className="auth-nav"><Link href="/signin" className="signin-link">تسجيل الدخول</Link><Link href="/signup" className="nav-cta">إنشاء حساب <Icon name="arrow" /></Link></div>
+          <div className="auth-nav">{student ? <><span className="student-greeting">أهلاً، {firstName(student.fullName)}</span><form action="/api/auth/signout" method="post"><button className="signin-link" type="submit">تسجيل الخروج</button></form></> : <><Link href="/signin" className="signin-link">تسجيل الدخول</Link><Link href="/signup" className="nav-cta">إنشاء حساب <Icon name="arrow" /></Link></>}</div>
           <button className="menu-btn" onClick={() => setMenu(!menu)} aria-label="فتح القائمة"><Icon name={menu ? "close" : "menu"} /></button>
         </nav>
       </header>
@@ -107,3 +117,5 @@ export default function Home() {
     </main>
   );
 }
+
+const firstName = (fullName: string) => fullName.trim().split(/\s+/)[0] || fullName;
