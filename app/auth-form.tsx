@@ -12,6 +12,8 @@ export default function AuthForm({ mode }: { mode: "signin" | "signup" }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState("");
+  const [resetStep, setResetStep] = useState<"email" | "code" | null>(null);
+  const [resetEmail, setResetEmail] = useState("");
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
@@ -59,6 +61,31 @@ export default function AuthForm({ mode }: { mode: "signin" | "signup" }) {
     finally { setLoading(false); }
   };
 
+  const requestPasswordReset = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); setMessage(""); setError(""); setLoading(true);
+    try {
+      const email = String(new FormData(e.currentTarget).get("email") ?? "").trim().toLowerCase();
+      const response = await fetch("/api/auth/request-password-reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
+      const data = await response.json() as { message?: string; error?: string };
+      if (!response.ok) throw new Error(data.error || "تعذر إرسال كود إعادة التعيين");
+      setResetEmail(email); setResetStep("code"); setMessage(data.message || "راجع بريدك الإلكتروني");
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "حدث خطأ غير متوقع"); }
+    finally { setLoading(false); }
+  };
+
+  const resetPassword = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); setMessage(""); setError(""); setLoading(true);
+    try {
+      const values = Object.fromEntries(new FormData(e.currentTarget));
+      if (values.password !== values.confirmPassword) throw new Error("كلمتا المرور غير متطابقتين");
+      const response = await fetch("/api/auth/reset-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: resetEmail, code: values.code, password: values.password }) });
+      const data = await response.json() as { message?: string; error?: string };
+      if (!response.ok) throw new Error(data.error || "تعذر تغيير كلمة المرور");
+      setResetStep(null); setResetEmail(""); setMessage(`${data.message} ✓ سجّل دخولك بكلمة المرور الجديدة.`);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "حدث خطأ غير متوقع"); }
+    finally { setLoading(false); }
+  };
+
   return (
     <main className="auth-page" dir="rtl">
       <section className="auth-visual">
@@ -71,13 +98,28 @@ export default function AuthForm({ mode }: { mode: "signin" | "signup" }) {
       <section className="auth-form-side">
         <div className="auth-form-wrap">
           <Link href="/" className="back-home">← الرجوع للرئيسية</Link>
-          <div className="auth-heading"><span>{signup ? "حساب جديد" : "تسجيل الدخول"}</span><h2>{signup ? "يلا نبدأ!" : "نورت المنصة"}</h2><p>{signup ? "اكتب بياناتك عشان تنضم لطلاب المنصور." : "اكتب بياناتك عشان تدخل على حسابك."}</p></div>
-          {signup && verificationEmail ? <form onSubmit={verifyCode}>
+          <div className="auth-heading"><span>{signup ? "حساب جديد" : resetStep ? "استرجاع الحساب" : "تسجيل الدخول"}</span><h2>{signup ? "يلا نبدأ!" : resetStep ? "غيّر كلمة المرور" : "نورت المنصة"}</h2><p>{signup ? "اكتب بياناتك عشان تنضم لطلاب المنصور." : resetStep ? "هنأكد ملكية بريدك بكود من 6 أرقام." : "اكتب بياناتك عشان تدخل على حسابك."}</p></div>
+          {!signup && resetStep === "email" ? <form onSubmit={requestPasswordReset}>
+            <label>البريد الإلكتروني<input name="email" required type="email" placeholder="name@example.com" autoComplete="email" /></label>
+            <button className="auth-submit" type="submit" disabled={loading}>{loading ? "جاري الإرسال..." : "إرسال كود الاسترجاع"}<span>←</span></button>
+            <button className="auth-secondary" type="button" disabled={loading} onClick={() => { setResetStep(null); setMessage(""); setError(""); }}>الرجوع لتسجيل الدخول</button>
+            {message && <p className="success-message" role="status">{message}</p>}
+            {error && <p className="error-message" role="alert">{error}</p>}
+          </form> : !signup && resetStep === "code" ? <form onSubmit={resetPassword}>
+            <p>أرسلنا كود الاسترجاع إلى <b dir="ltr">{resetEmail}</b>.</p>
+            <label>كود الاسترجاع<input name="code" required minLength={6} maxLength={6} pattern="[0-9]{6}" inputMode="numeric" autoComplete="one-time-code" placeholder="000000" dir="ltr" /></label>
+            <label>كلمة المرور الجديدة<div className="password-field"><input name="password" required minLength={8} type={show ? "text" : "password"} autoComplete="new-password" placeholder="8 حروف على الأقل"/><button type="button" onClick={() => setShow(!show)}>{show ? "إخفاء" : "إظهار"}</button></div></label>
+            <label>تأكيد كلمة المرور<input name="confirmPassword" required minLength={8} type={show ? "text" : "password"} autoComplete="new-password" /></label>
+            <button className="auth-submit" type="submit" disabled={loading}>{loading ? "جاري التغيير..." : "تغيير كلمة المرور"}<span>←</span></button>
+            <button className="auth-secondary" type="button" disabled={loading} onClick={() => { setResetStep("email"); setMessage(""); setError(""); }}>طلب كود جديد أو تغيير البريد</button>
+            {message && <p className="success-message" role="status">{message}</p>}
+            {error && <p className="error-message" role="alert">{error}</p>}
+          </form> : signup && verificationEmail ? <form onSubmit={verifyCode}>
             <label>كود التأكيد<input name="code" required minLength={6} maxLength={6} pattern="[0-9]{6}" inputMode="numeric" autoComplete="one-time-code" placeholder="000000" dir="ltr" /></label>
             <p className="full-field">أرسلنا الكود إلى <b dir="ltr">{verificationEmail}</b>. راجع الرسائل غير المرغوب فيها لو مش ظاهر.</p>
             <button className="auth-submit full-field" type="submit" disabled={loading}>{loading ? "جاري التأكيد..." : "تأكيد وإنشاء الحساب"}<span>←</span></button>
-            <button className="full-field" type="button" disabled={loading} onClick={resendCode}>إرسال كود جديد</button>
-            <button className="full-field" type="button" disabled={loading} onClick={() => { setVerificationEmail(""); setMessage(""); setError(""); }}>تعديل البيانات أو البريد</button>
+            <button className="auth-secondary full-field" type="button" disabled={loading} onClick={resendCode}>إرسال كود جديد</button>
+            <button className="auth-secondary full-field" type="button" disabled={loading} onClick={() => { setVerificationEmail(""); setMessage(""); setError(""); }}>تعديل البيانات أو البريد</button>
             {message && <p className="success-message full-field" role="status">{message}</p>}
             {error && <p className="error-message full-field" role="alert">{error}</p>}
           </form> : <form className={signup ? "signup-form" : ""} onSubmit={submit}>
@@ -89,7 +131,7 @@ export default function AuthForm({ mode }: { mode: "signin" | "signup" }) {
             {signup && <label>مهنة ولي الأمر<input name="guardianOccupation" required minLength={2} type="text" placeholder="مثال: مهندس" /></label>}
             {signup && <label>رقم موبايل ولي الأمر<input name="guardianPhone" required pattern="01[0125][0-9]{8}" inputMode="numeric" type="tel" placeholder="01xxxxxxxxx" /></label>}
             <label className={signup ? "full-field" : ""}>كلمة المرور<div className="password-field"><input name="password" required minLength={8} type={show ? "text" : "password"} placeholder="8 حروف على الأقل" autoComplete={signup ? "new-password" : "current-password"}/><button type="button" onClick={() => setShow(!show)}>{show ? "إخفاء" : "إظهار"}</button></div></label>
-            {!signup && <div className="form-options"><label><input type="checkbox"/> تذكرني</label><button type="button">نسيت كلمة المرور؟</button></div>}
+            {!signup && <div className="form-options"><label><input type="checkbox"/> تذكرني</label><button type="button" onClick={() => { setResetStep("email"); setMessage(""); setError(""); }}>نسيت كلمة المرور؟</button></div>}
             <button className="auth-submit full-field" type="submit" disabled={loading}>{loading ? "جاري الحفظ..." : signup ? "إنشاء حساب" : "تسجيل الدخول"}<span>←</span></button>
             {message && <p className="success-message" role="status">{message}</p>}
             {error && <p className="error-message" role="alert">{error}</p>}

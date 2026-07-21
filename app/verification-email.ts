@@ -17,6 +17,14 @@ export function hashVerificationCode(email: string, code: string) {
 }
 
 export async function sendVerificationEmail(email: string, fullName: string, code: string) {
+  return sendCodeEmail(email, "كود تأكيد حسابك في أكاديمية المنصور", verificationEmailHtml(fullName, code), `أهلاً ${fullName}، كود تأكيد حسابك هو: ${code}. الكود صالح لمدة ${CODE_TTL_MINUTES} دقائق.`);
+}
+
+export async function sendPasswordResetEmail(email: string, fullName: string, code: string) {
+  return sendCodeEmail(email, "كود إعادة تعيين كلمة المرور", passwordResetEmailHtml(fullName, code), `أهلاً ${fullName}، كود إعادة تعيين كلمة المرور هو: ${code}. الكود صالح لمدة ${CODE_TTL_MINUTES} دقائق.`);
+}
+
+async function sendCodeEmail(email: string, subject: string, html: string, text: string) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM_EMAIL;
   if (!apiKey || !from) throw new Error("Resend is not configured");
@@ -30,9 +38,7 @@ export async function sendVerificationEmail(email: string, fullName: string, cod
     body: JSON.stringify({
       from,
       to: [email],
-      subject: "كود تأكيد حسابك في أكاديمية المنصور",
-      html: verificationEmailHtml(fullName, code),
-      text: `أهلاً ${fullName}، كود تأكيد حسابك هو: ${code}. الكود صالح لمدة ${CODE_TTL_MINUTES} دقائق.`,
+      subject, html, text,
     }),
   });
 
@@ -41,6 +47,11 @@ export async function sendVerificationEmail(email: string, fullName: string, cod
     console.error("Resend verification email failed", response.status, details);
     throw new Error("Verification email could not be sent");
   }
+}
+
+function passwordResetEmailHtml(fullName: string, code: string) {
+  const safeName = escapeHtml(fullName);
+  return `<!doctype html><html lang="ar" dir="rtl"><body style="margin:0;background:#f4f6fb;font-family:Arial,sans-serif;color:#14213d"><div style="max-width:560px;margin:32px auto;background:#fff;border-radius:16px;padding:32px"><h1 style="font-size:24px;margin:0 0 16px">أهلاً ${safeName}</h1><p style="font-size:16px;line-height:1.8">استخدم الكود التالي لإعادة تعيين كلمة المرور:</p><div dir="ltr" style="font-size:34px;font-weight:700;letter-spacing:10px;text-align:center;background:#f0f4ff;border-radius:12px;padding:18px;margin:24px 0">${code}</div><p style="font-size:14px;color:#667085">الكود صالح لمدة ${CODE_TTL_MINUTES} دقائق. لو لم تطلب تغيير كلمة المرور، تجاهل الرسالة ولن يتغير حسابك.</p></div></body></html>`;
 }
 
 function verificationEmailHtml(fullName: string, code: string) {

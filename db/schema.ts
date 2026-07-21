@@ -87,6 +87,19 @@ export const studentSessions = pgTable("student_sessions", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [uniqueIndex("student_sessions_token_unique").on(table.tokenHash), index("student_sessions_student_idx").on(table.studentId)]);
 
+export const studentPasswordResets = pgTable("student_password_resets", {
+  id: serial("id").primaryKey(),
+  studentId: integer("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
+  codeHash: text("code_hash").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  attempts: integer("attempts").notNull().default(0),
+  lastSentAt: timestamp("last_sent_at", { withTimezone: true }).notNull().defaultNow(),
+  ...timestamps,
+}, (table) => [
+  uniqueIndex("student_password_resets_student_unique").on(table.studentId),
+  index("student_password_resets_expiry_idx").on(table.expiresAt),
+]);
+
 export const adminSessions = pgTable("admin_sessions", {
   id: serial("id").primaryKey(),
   adminId: integer("admin_id").notNull().references(() => admins.id, { onDelete: "cascade" }),

@@ -15,6 +15,13 @@
       "when": 1784399123135,
       "tag": "0001_aromatic_princess_powerful",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784662555863,
+      "tag": "0002_lovely_chameleon",
+      "breakpoints": true
     }
   ]
 }
